@@ -19,9 +19,11 @@ public class SwiftFlutterMicrosoftAuthenticationPlugin: NSObject, FlutterPlugin 
     let clientId = dict["kClientID"] as! String
     let scopes = dict["kScopes"] as! [String]
     let authority = dict["kAuthority"] as! String
-
+    let bundleID = Bundle.main.bundleIdentifier!
+    let redirectUri = "msauth." + bundleID + "://auth"
+    
     let msalView = ViewController()
-    msalView.onInit(clientId: clientId, scopes: scopes, authority: authority, flutterResult: result)
+    msalView.onInit(clientId: clientId, redirectUri: redirectUri, scopes: scopes, authority: authority, flutterResult: result)
 
     if(call.method == "acquireTokenInteractively") {
         msalView.acquireTokenInteractively(flutterResult: result)
@@ -39,6 +41,7 @@ public class SwiftFlutterMicrosoftAuthenticationPlugin: NSObject, FlutterPlugin 
 private class ViewController: UIViewController, UITextFieldDelegate, URLSessionDelegate {
 
     var kClientID = ""
+    var kRedirectUri = ""
     var kScopes: [String] = []
     var kAuthority = ""
 
@@ -46,8 +49,9 @@ private class ViewController: UIViewController, UITextFieldDelegate, URLSessionD
     var applicationContext : MSALPublicClientApplication?
     var webViewParamaters : MSALWebviewParameters?
 
-    public func onInit(clientId: String, scopes: [String], authority: String, flutterResult: @escaping FlutterResult) {
+    public func onInit(clientId: String, redirectUri: String, scopes: [String], authority: String, flutterResult: @escaping FlutterResult) {
         self.kClientID = clientId
+        self.kRedirectUri = redirectUri
         self.kScopes = scopes
         self.kAuthority = authority
         do {
@@ -88,11 +92,12 @@ extension ViewController {
             return
         }
 
-        let authority = try MSALAADAuthority(url: authorityURL)
+        let authority = try MSALB2CAuthority(url: authorityURL)
 
-        let msalConfiguration = MSALPublicClientApplicationConfig(clientId: kClientID, redirectUri: nil, authority: authority)
+        let msalConfiguration = MSALPublicClientApplicationConfig(clientId: kClientID, redirectUri: kRedirectUri, authority: authority)
+        msalConfiguration.knownAuthorities = [authority]
         self.applicationContext = try MSALPublicClientApplication(configuration: msalConfiguration)
-
+        
         let viewController: UIViewController = (UIApplication.shared.delegate?.window??.rootViewController)!;
 
         self.webViewParamaters = MSALWebviewParameters(parentViewController: viewController)
@@ -108,7 +113,7 @@ extension ViewController {
 
         guard let applicationContext = self.applicationContext else { return }
         guard let webViewParameters = self.webViewParamaters else { return }
-
+        webViewParameters.webviewType = MSALWebviewType.wkWebView
         let parameters = MSALInteractiveTokenParameters(scopes: kScopes, webviewParameters: webViewParameters)
         parameters.promptType = .selectAccount;
 
