@@ -120,7 +120,22 @@ extension ViewController {
         applicationContext.acquireToken(with: parameters) { (result, error) in
 
             if let error = error {
-                flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token", details: nil))
+
+                let nsError = error as NSError
+
+                // interactionRequired means we need to ask the user to sign-in. This usually happens
+                // when the user's Refresh Token is expired or if the user has changed their password
+                // among other possible reasons.
+                let userInfo = nsError.userInfo;
+                let keyInfo = userInfo[MSALErrorDescriptionKey];
+                if let ki = keyInfo as? String {
+                    if (ki.contains("AADB2C90118"))
+                        flutterResult(FlutterError(code: "FORGOT_PASSWORD_ERROR", message: "User has forgotten their password", details: nil))
+                    else
+                        flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token: \(ki) ", details: nil))
+                    return
+                }
+                flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token: \() ", details: nil))
                 print("Could not acquire token: \(error)")
                 return
             }
