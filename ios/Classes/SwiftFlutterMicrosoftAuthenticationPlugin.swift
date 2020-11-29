@@ -129,13 +129,14 @@ extension ViewController {
                 let userInfo = nsError.userInfo;
                 let keyInfo = userInfo[MSALErrorDescriptionKey];
                 if let ki = keyInfo as? String {
-                    if (ki.contains("AADB2C90118"))
+                    if (ki.contains("AADB2C90118")) {
                         flutterResult(FlutterError(code: "FORGOT_PASSWORD_ERROR", message: "User has forgotten their password", details: nil))
-                    else
+                    } else {
                         flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token: \(ki) ", details: nil))
+                    }
                     return
                 }
-                flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token: \() ", details: nil))
+                flutterResult(FlutterError(code: "AUTH_ERROR", message: "Could not acquire token", details: nil))
                 print("Could not acquire token: \(error)")
                 return
             }
