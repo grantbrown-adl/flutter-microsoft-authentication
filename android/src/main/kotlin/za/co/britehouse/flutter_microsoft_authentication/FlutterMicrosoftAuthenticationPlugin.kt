@@ -37,24 +37,11 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
-
-    Log.d(TAG,"Method call entered")
-    val something: ArrayList<String>?  = call.argument("kScopes")
-    Log.d(TAG,"Scopes: $something")
-
     val scopesArg : ArrayList<String>? = call.argument("kScopes")
     val scopes: Array<String> = scopesArg?.toTypedArray() ?: emptyArray()
     val authority: String = call.argument("kAuthority") ?: ""
     val configPath: String = call.argument("configPath") ?: ""
     val extraQueryParameters: Map<String, String> = call.argument("extraQueryParameters") ?: emptyMap<String, String>();
-
-    Log.d(TAG,"Scopes: $scopes")
-    Log.d(TAG,"ScopesArg: $scopesArg")
-    Log.d(TAG,"Authority: $authority")
-    Log.d(TAG,"Config Path: $configPath")
-    Log.d(TAG,"Extra Query Parameters: $extraQueryParameters")
-
-    Log.d(TAG,"Method call - Defs done")
 
 
     if (configPath == null) {
@@ -75,16 +62,6 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
       return
     }
 
-    if(scopesArg == null){
-      Log.d(TAG,"error no scopes args")
-    }
-
-    if(extraQueryParameters == null || extraQueryParameters == emptyMap<String, String>()){
-      Log.d(TAG,"error extra query map null or empty")
-    }
-
-    Log.d(TAG,"Method call - Null checks done")
-    Log.d(TAG,"call.method starting")
     when(call.method){      
       "acquireTokenInteractively" -> acquireTokenInteractively(scopes, authority, extraQueryParameters, result)
       "acquireTokenSilently" -> acquireTokenSilently(scopes, authority, result)
@@ -178,7 +155,6 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
     if (mSingleAccountApp == null) {
       result.error("MsalClientException", "Account not initialized", null)
     }
-    Log.d(TAG, "Signing out now")
     return mSingleAccountApp!!.signOut(object : ISingleAccountPublicClientApplication.SignOutCallback {
       override fun onSignOut() {
         result.success("SUCCESS")
