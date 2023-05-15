@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io' show Platform;
+
 import 'package:flutter/services.dart';
 
 class FlutterMicrosoftAuthentication {
@@ -10,11 +11,12 @@ class FlutterMicrosoftAuthentication {
   String _kClientID, _kAuthority;
   String _androidConfigAssetPath;
 
-  FlutterMicrosoftAuthentication(
-      {String kClientID,
-      String kAuthority,
-      List<String> kScopes,
-      String androidConfigAssetPath}) {
+  FlutterMicrosoftAuthentication({
+    String kClientID,
+    String kAuthority,
+    List<String> kScopes,
+    String androidConfigAssetPath,
+  }) {
     _kClientID = kClientID;
     _kAuthority = kAuthority;
     _kScopes = kScopes;
@@ -38,9 +40,14 @@ class FlutterMicrosoftAuthentication {
   }
 
   /// Acquire auth token with interactive flow.
-  Future<String> get acquireTokenInteractively async {
+  Future<String> acquireTokenInteractively(
+      [Map<String, dynamic> options]) async {
+    options = options ?? {};
+    final defaultArgs = _createMethodcallArguments();
+    final methodCallArgs = {}..addAll(options..addAll(defaultArgs));
+
     final String token = await _channel.invokeMethod(
-        'acquireTokenInteractively', _createMethodcallArguments());
+        'acquireTokenInteractively', methodCallArgs);
     return token;
   }
 
