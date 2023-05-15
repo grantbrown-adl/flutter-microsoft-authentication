@@ -31,17 +31,30 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
     fun registerWith(registrar: Registrar) {
       val channel = MethodChannel(registrar.messenger(), "flutter_microsoft_authentication")
       channel.setMethodCallHandler(FlutterMicrosoftAuthenticationPlugin())
-      mainActivity = registrar.activity()
+      mainActivity = registrar.activity() ?: Activity()
       mRegistrar = registrar
     }
   }
 
   override fun onMethodCall(call: MethodCall, result: Result) {
 
+    Log.d(TAG,"Method call entered")
+    val something: ArrayList<String>?  = call.argument("kScopes")
+    Log.d(TAG,"Scopes: $something")
+
     val scopesArg : ArrayList<String>? = call.argument("kScopes")
-    val scopes: Array<String>? = scopesArg?.toTypedArray()
-    val authority: String? = call.argument("kAuthority")
-    val configPath: String? = call.argument("configPath")
+    val scopes: Array<String> = scopesArg?.toTypedArray() ?: emptyArray()
+    val authority: String = call.argument("kAuthority") ?: ""
+    val configPath: String = call.argument("configPath") ?: ""
+    val extraQueryParameters: Map<String, String> = call.argument("extraQueryParameters") ?: emptyMap<String, String>();
+
+    Log.d(TAG,"Scopes: $scopes")
+    Log.d(TAG,"ScopesArg: $scopesArg")
+    Log.d(TAG,"Authority: $authority")
+    Log.d(TAG,"Config Path: $configPath")
+    Log.d(TAG,"Extra Query Parameters: $extraQueryParameters")
+
+    Log.d(TAG,"Method call - Defs done")
 
 
     if (configPath == null) {
@@ -62,16 +75,24 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
       return
     }
 
-    when(call.method){
-      "acquireTokenInteractively" -> acquireTokenInteractively(scopes, authority, result)
+    if(scopesArg == null){
+      Log.d(TAG,"error no scopes args")
+    }
+
+    if(extraQueryParameters == null || extraQueryParameters == emptyMap<String, String>()){
+      Log.d(TAG,"error extra query map null or empty")
+    }
+
+    Log.d(TAG,"Method call - Null checks done")
+    Log.d(TAG,"call.method starting")
+    when(call.method){      
+      "acquireTokenInteractively" -> acquireTokenInteractively(scopes, authority, extraQueryParameters, result)
       "acquireTokenSilently" -> acquireTokenSilently(scopes, authority, result)
       "loadAccount" -> loadAccount(result)
       "signOut" -> signOut(result)
       "init" -> initPlugin(configPath)
       else -> result.notImplemented()
     }
-
-
   }
 
   @Throws(IOException::class)
@@ -131,12 +152,18 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
             })
   }
 
-  private fun acquireTokenInteractively(scopes: Array<String>, authority: String, result: Result) {
+  private fun acquireTokenInteractively(scopes: Array<String>, authority: String, extraQueryParameters: Map<String, String> , result: Result) {
     if (mSingleAccountApp == null) {
       result.error("MsalClientException", "Account not initialized", null)
     }
 
-    return mSingleAccountApp!!.signIn(mainActivity, "", scopes, getAuthInteractiveCallback(result))
+    var parameterBuilder = AcquireTokenParameters.Builder()
+            .startAuthorizationFromActivity(mainActivity)
+            .withScopes(scopes.asList())
+            .withAuthorizationQueryStringParameters(extraQueryParameters.map{ android.util.Pair(it.key, it.value) } )
+            .withCallback(getAuthInteractiveCallback(result));
+    var parameters = AcquireTokenParameters(parameterBuilder);
+    return mSingleAccountApp!!.acquireToken(parameters)
   }
 
   private fun acquireTokenSilently(scopes: Array<String>, authority: String, result: Result) {
@@ -151,7 +178,7 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
     if (mSingleAccountApp == null) {
       result.error("MsalClientException", "Account not initialized", null)
     }
-
+    Log.d(TAG, "Signing out now")
     return mSingleAccountApp!!.signOut(object : ISingleAccountPublicClientApplication.SignOutCallback {
       override fun onSignOut() {
         result.success("SUCCESS")
@@ -183,14 +210,18 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
         Log.d(TAG, "Authentication failed: ${exception.errorCode}")
 
         if (exception is MsalClientException) {
-          /* Exception inside MSAL, more info inside MsalError.java */
-          Log.d(TAG, "Authentication failed: MsalClientException")
-          result.error("MsalClientException",exception.errorCode, null)
-
+            /* Exception inside MSAL, more info inside MsalError.java */
+            Log.d(TAG, "Authentication failed: MsalClientException")
+            result.error("MsalClientException",exception.errorCode, null)
         } else if (exception is MsalServiceException) {
-          /* Exception when communicating with the STS, likely config issue */
-          Log.d(TAG, "Authentication failed: MsalServiceException")
-          result.error("MsalServiceException",exception.errorCode, null)
+          if(exception.message!!.contains("AADB2C90118")) {
+            Log.d(TAG, "Authentication failed: Forgot password")
+            result.error("FORGOT_PASSWORD_ERROR",exception.errorCode, null)
+          } else {
+            /* Exception when communicating with the STS, likely config issue */
+            Log.d(TAG, "Authentication failed: MsalServiceException")
+            result.error("MsalServiceException", exception.errorCode, null)
+          }
         }
       }
 
