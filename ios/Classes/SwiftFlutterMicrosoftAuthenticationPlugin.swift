@@ -26,7 +26,8 @@ public class SwiftFlutterMicrosoftAuthenticationPlugin: NSObject, FlutterPlugin 
     msalView.onInit(clientId: clientId, redirectUri: redirectUri, scopes: scopes, authority: authority, flutterResult: result)
 
     if(call.method == "acquireTokenInteractively") {
-        msalView.acquireTokenInteractively(flutterResult: result)
+        let extraQueryParameters = dict["extraQueryParameters"] as? [String:String] ?? [:]
+        msalView.acquireTokenInteractively(extraQueryParameters: extraQueryParameters, flutterResult: result)
     } else if(call.method == "acquireTokenSilently") {
         msalView.acquireTokenSilently(flutterResult: result)
     } else if(call.method == "signOut") {
@@ -109,13 +110,14 @@ extension ViewController {
 
 extension ViewController {
 
-    func acquireTokenInteractively(flutterResult: @escaping FlutterResult) {
+    func acquireTokenInteractively(extraQueryParameters: [String : String] = [:], flutterResult: @escaping FlutterResult) {
 
         guard let applicationContext = self.applicationContext else { return }
         guard let webViewParameters = self.webViewParamaters else { return }
         webViewParameters.webviewType = MSALWebviewType.wkWebView
         let parameters = MSALInteractiveTokenParameters(scopes: kScopes, webviewParameters: webViewParameters)
         parameters.promptType = .selectAccount;
+        parameters.extraQueryParameters = extraQueryParameters;
 
         applicationContext.acquireToken(with: parameters) { (result, error) in
 
@@ -255,9 +257,17 @@ extension ViewController {
      */
     func signOut(flutterResult: @escaping FlutterResult) {
 
-        guard let applicationContext = self.applicationContext else { return }
+        guard let applicationContext = self.applicationContext else {
+            flutterResult(FlutterError(code: "MISSING_APPLICATION",  message: "Could not sign out without application context", details: nil))
+            return
+        }
 
-        guard let account = self.currentAccount(flutterResult: flutterResult) else { return }
+        guard let account = self.currentAccount(flutterResult: flutterResult) else {
+            print("No active account to sign out of")
+            self.accessToken = ""
+            flutterResult(self.accessToken)
+            return
+        }
 
         do {
 
