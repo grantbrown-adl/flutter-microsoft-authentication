@@ -190,14 +190,9 @@ class FlutterMicrosoftAuthenticationPlugin: MethodCallHandler {
             Log.d(TAG, "Authentication failed: MsalClientException")
             result.error("MsalClientException",exception.errorCode, null)
         } else if (exception is MsalServiceException) {
-          if(exception.message!!.contains("AADB2C90118")) {
-            Log.d(TAG, "Authentication failed: Forgot password")
-            result.error("FORGOT_PASSWORD_ERROR",exception.errorCode, null)
-          } else {
             /* Exception when communicating with the STS, likely config issue */
             Log.d(TAG, "Authentication failed: MsalServiceException")
-            result.error("MsalServiceException", exception.errorCode, null)
-          }
+            result.error("MsalServiceException", exception.errorCode, null)          
         }
       }
 
